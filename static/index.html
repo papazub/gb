@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grabber — Unduh File Digital</title>
+<style>
+:root{
+  --lake:#2A7885; --water:#9ACFCF; --moss:#3B8B67; --rose:#BC4D58;
+  --bg:#E7EEED; --card:#FFFFFF; --ink:#16323A; --muted:#5E7A80;
+  --line:#CFDEDC; --tabbar:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0D1A1D; --card:#14262B; --ink:#E4F1F2; --muted:#8FA9AE;
+         --line:#24424A; --tabbar:#14262B; }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--ink);padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+h1,h2{font-family:'Bricolage Grotesque','Figtree',system-ui,sans-serif;margin:0}
+header{background:linear-gradient(135deg,var(--lake),#1E5A64);color:#fff;
+  padding:14px 16px 18px;position:sticky;top:0;z-index:20;}
+header .row{display:flex;align-items:center;gap:10px}
+header h1{font-size:22px}
+.running{font-size:12px;background:rgba(255,255,255,.18);border-radius:99px;
+  padding:3px 10px;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#9ACFCF;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.wave{display:block;width:100%;height:14px;margin-top:8px}
+main{max-width:1180px;margin:0 auto;padding:12px;display:grid;gap:12px}
+@media(min-width:900px){
+  main{grid-template-columns:1fr 1fr 1fr;align-items:start}
+  body{padding-bottom:0}
+  .tabbar{display:none!important}
+  .panel{display:block!important}
+}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:14px;display:none}
+.panel.active{display:block}
+.panel h2{font-size:16px;margin-bottom:10px;color:var(--lake)}
+textarea,input,select{width:100%;border:1px solid var(--line);border-radius:10px;
+  padding:10px;font:inherit;color:var(--ink);background:var(--bg)}
+textarea{min-height:96px;resize:vertical}
+.btn{border:0;border-radius:12px;padding:11px 14px;font:inherit;font-weight:700;
+  cursor:pointer;color:#fff;background:var(--lake);position:relative;overflow:hidden;
+  width:100%;margin-top:8px}
+.btn:active{transform:scale(.98)}
+.btn.secondary{background:var(--moss)}
+.btn.ghost{background:transparent;color:var(--lake);border:1.5px solid var(--lake)}
+.btn.danger{background:var(--rose)}
+.btnrow{display:flex;gap:8px}
+.btnrow .btn{margin-top:8px}
+details{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 10px}
+summary{cursor:pointer;font-weight:600;color:var(--muted);font-size:13px}
+details label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(20px);background:#16323A;color:#fff;
+  padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;transition:.25s;
+  z-index:99;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--tabbar);
+  border-top:1px solid var(--line);display:flex;z-index:30;
+  padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{flex:1;border:0;background:none;padding:10px 0 8px;font:inherit;
+  font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar button.active{color:var(--lake);font-weight:700}
+.tabbar .badge{background:var(--rose);color:#fff;border-radius:99px;font-size:10px;
+  padding:1px 7px;margin-left:4px}
+/* kartu job */
+.job{border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:10px}
+.job .title{font-weight:700;font-size:14px;word-break:break-all}
+.job .origin{font-size:11px;color:var(--muted);word-break:break-all}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;
+  padding:3px 10px;margin:6px 0}
+.chip.queued{background:#E4E9F2;color:#42506B}
+.chip.running{background:#D6EEF2;color:#1E5A64}
+.chip.converting{background:#EFE3C8;color:#8A6D1F}
+.chip.done{background:#D8F0E2;color:#1F6B44}
+.chip.error{background:#F6D9DC;color:#8E2F38}
+.bejana{position:relative;height:34px;border-radius:10px;background:var(--bg);
+  border:1px solid var(--line);overflow:hidden;margin:6px 0}
+.bejana .air{position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,var(--water),var(--lake));transition:width .5s}
+.bejana .gelombang{position:absolute;inset:0;opacity:.35;
+  background:radial-gradient(circle at 10px -4px,transparent 12px,rgba(255,255,255,.7) 13px);
+  background-size:24px 20px;animation:ombak 2.4s linear infinite}
+@keyframes ombak{to{background-position-x:24px}}
+.bejana .label{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700}
+.bejana .centang{position:absolute;right:8px;top:5px;color:var(--moss);font-weight:900;display:none}
+.bejana.selesai .centang{display:block}
+.titik3 span{display:inline-block;animation:lompat 1s infinite}
+.titik3 span:nth-child(2){animation-delay:.15s}.titik3 span:nth-child(3){animation-delay:.3s}
+@keyframes lompat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.meta{font-size:12px;color:var(--muted)}
+.err{font-size:12px;color:var(--rose);margin-top:6px;word-break:break-word}
+.logbox{display:none;background:var(--bg);border-radius:8px;padding:8px;
+  font-family:ui-monospace,monospace;font-size:11px;max-height:160px;
+  overflow:auto;margin-top:6px;white-space:pre-wrap}
+.logbox.open{display:block}
+.job .aksi{display:flex;gap:8px;margin-top:8px}
+.job .aksi .btn{margin-top:0;padding:8px;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:28px 10px;font-size:14px}
+.empty .tetes{font-size:40px}
+/* pindai */
+#scanBox{display:none;border:1px solid var(--line);border-radius:12px;
+  margin-top:10px;padding:10px;max-height:320px;overflow:auto}
+#scanBox.open{display:block}
+.scanitem{display:flex;gap:8px;align-items:center;padding:8px 0;
+  border-bottom:1px dashed var(--line);font-size:13px}
+.scanitem img{width:72px;height:44px;object-fit:cover;border-radius:6px;background:var(--bg)}
+.scanitem .nm{flex:1;word-break:break-word}
+.scanitem .sz{color:var(--muted);font-size:11px;white-space:nowrap}
+.radar{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--lake);
+  border-radius:50%;animation:putar 1s linear infinite;margin:12px auto}
+@keyframes putar{to{transform:rotate(360deg)}}
+/* catatan */
+#notes{min-height:220px;line-height:1.7;
+  background:repeating-linear-gradient(var(--card),var(--card) 27px,var(--line) 28px)}
+.nstatus{font-size:12px;color:var(--muted);margin-top:6px}
+.bm{font-size:12px;color:var(--muted);margin-top:12px}
+.bm a{color:var(--lake)}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>💧 Grabber</h1>
+    <span class="running"><span class="dot"></span><span id="runCount">0 berjalan</span></span>
+  </div>
+  <svg class="wave" viewBox="0 0 1200 14" preserveAspectRatio="none">
+    <path d="M0,8 Q75,0 150,8 T300,8 T450,8 T600,8 T750,8 T900,8 T1050,8 T1200,8"
+      fill="none" stroke="#9ACFCF" stroke-width="3" opacity=".8"/>
+  </svg>
+</header>
+
+<main>
+  <!-- PANEL TAMBAH -->
+  <section class="panel active" id="panel-tambah">
+    <h2>Tambah file</h2>
+    <textarea id="url" placeholder="Tempel link halaman / file di sini, satu per baris…"></textarea>
+    <div class="btnrow">
+      <button class="btn ghost" id="btnTempel">📋 Tempel</button>
+      <button class="btn" id="btnUnduh">⬇ Unduh</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn secondary" id="btnSmart">✨ Tembus iklan</button>
+      <button class="btn ghost" id="btnPindai">🔍 Pindai halaman</button>
+    </div>
+    <details>
+      <summary>Pengaturan lanjutan</summary>
+      <label>Link stream manual (master.m3u8)</label>
+      <input id="stream" placeholder="https://…/master.m3u8">
+      <label>Referer</label>
+      <input id="referer" placeholder="https://situs-asal.com/">
+      <label>Cookie dari browser</label>
+      <select id="browser">
+        <option value="">Tidak</option><option>chrome</option><option>edge</option>
+        <option>firefox</option><option>brave</option>
+      </select>
+    </details>
+    <div id="scanBox"></div>
+    <p class="bm">💡 Bookmarklet PC: seret link ini ke bookmark bar →
+      <a id="bmLink" href="#">Kirim ke Grabber</a></p>
+  </section>
+
+  <!-- PANEL UNDUHAN -->
+  <section class="panel" id="panel-unduhan">
+    <h2>Unduhan</h2>
+    <div class="btnrow">
+      <button class="btn ghost" id="btnHapusSelesai">🧹 Hapus selesai</button>
+      <button class="btn ghost" id="btnHapusGagal">🗑 Hapus gagal</button>
+    </div>
+    <div id="jobs"></div>
+  </section>
+
+  <!-- PANEL CATATAN -->
+  <section class="panel" id="panel-catatan">
+    <h2>Catatan</h2>
+    <textarea id="notes" placeholder="Tulis catatan di sini… tersinkron antar perangkat."></textarea>
+    <div class="nstatus" id="notesStatus">Memuat…</div>
+    <button class="btn ghost" id="btnSalin">📋 Salin catatan</button>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-tab="tambah" class="active">➕<span>Tambah</span></button>
+  <button data-tab="unduhan">⬇<span>Unduhan<span class="badge" id="badge" style="display:none">0</span></span></button>
+  <button data-tab="catatan">📝<span>Catatan</span></button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const toastEl = $("toast");
+function toast(m){ toastEl.textContent = m; toastEl.classList.add("show");
+  clearTimeout(toastEl._t); toastEl._t = setTimeout(()=>toastEl.classList.remove("show"), 2400); }
+async function post(path, body){
+  const r = await fetch(path, {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || ("HTTP "+r.status));
+  return j;
+}
+function fmtB(n){ if(!n && n!==0) return "?";
+  const u=["B","KB","MB","GB","TB"]; let i=0;
+  while(n>=1024 && i<u.length-1){n/=1024;i++;} return n.toFixed(1)+" "+u[i]; }
+function fmtS(n){ if(!n) return "—"; const u=["B/s","KB/s","MB/s","GB/s"];
+  let i=0; while(n>=1024 && i<u.length-1){n/=1024;i++;} return n.toFixed(1)+" "+u[i]; }
+
+/* ---------- tab (HP) ---------- */
+const tabs = document.querySelectorAll(".tabbar button");
+function showTab(name){
+  tabs.forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  document.querySelectorAll(".panel").forEach(p=>
+    p.classList.toggle("active", p.id==="panel-"+name));
+  try{ localStorage.setItem("grabber_tab", name); }catch(e){}
+}
+tabs.forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+try{ const t=localStorage.getItem("grabber_tab"); if(t) showTab(t); }catch(e){}
+
+/* ---------- tambah ---------- */
+$("btnTempel").onclick = async ()=>{
+  try{ const t = await navigator.clipboard.readText();
+    if(t){ $("url").value = ($("url").value?t+"\n":"")+t.trim(); toast("Ditempel ✓"); }
+    else toast("Clipboard kosong");
+  }catch(e){ $("url").focus(); toast("Izin clipboard ditolak — tempel manual ya"); }
+};
+function lines(){ return $("url").value.split("\n").map(s=>s.trim()).filter(Boolean); }
+function submit(smart){
+  const ls = lines();
+  const stream = $("stream").value.trim();
+  if(!ls.length && !stream){ toast("Isi dulu linknya"); return; }
+  const jobs = ls.length? ls : [stream];
+  (async()=>{
+    for(const u of jobs){
+      try{
+        await post("/api/jobs", {url:u, stream: ls.length?stream:"",
+          referer:$("referer").value.trim(), browser:$("browser").value, smart});
+      }catch(e){ toast("Gagal: "+e.message); return; }
+    }
+    toast(jobs.length+" job ditambahkan ✓");
+    $("url").value=""; showTab("unduhan");
+  })();
+}
+$("btnUnduh").onclick = ()=>submit(false);
+$("btnSmart").onclick = ()=>submit(true);
+
+/* ---------- pindai ---------- */
+let scanTimer = null;
+$("btnPindai").onclick = async ()=>{
+  const ls = lines();
+  if(!ls.length){ toast("Isi dulu link halamannya"); return; }
+  const box = $("scanBox"); box.classList.add("open");
+  box.innerHTML = '<div class="radar"></div><p style="text-align:center;color:var(--muted);font-size:13px">Memindai halaman…</p>';
+  try{
+    const {id} = await post("/api/scan", {url:ls[0]});
+    clearInterval(scanTimer);
+    scanTimer = setInterval(async ()=>{
+      const r = await fetch("/api/scan/"+id).then(x=>x.json());
+      if(r.status==="done"){ clearInterval(scanTimer); renderScan(r.items, ls[0]); }
+      else if(r.status==="error"){ clearInterval(scanTimer);
+        box.innerHTML = '<p class="err">Pindai gagal: '+esc(r.error)+"</p>"; }
+    }, 1000);
+  }catch(e){ box.innerHTML = '<p class="err">Gagal: '+esc(e.message)+"</p>"; }
+};
+function esc(s){ const d=document.createElement("div"); d.textContent=s||""; return d.innerHTML; }
+function renderScan(items, pageUrl){
+  const box = $("scanBox");
+  if(!items.length){ box.innerHTML='<p class="empty">Tidak ada file ditemukan di halaman ini.</p>'; return; }
+  let h = '<label style="font-size:13px"><input type="checkbox" id="scanAll" checked> Pilih semua</label>';
+  items.forEach((it,i)=>{
+    h += '<div class="scanitem"><input type="checkbox" class="scanCk" checked data-i="'+i+'">'
+      + (it.thumb?'<img src="'+esc(it.thumb)+'" loading="lazy" alt="">':'')
+      + '<div class="nm">'+esc(it.name)+'<div class="sz">'+esc(it.sizeText||"")+"</div></div></div>";
+  });
+  h += '<button class="btn" id="scanDl">⬇ Unduh terpilih (<span id="scanN">'+items.length+"</span>)</button>";
+  box.innerHTML = h;
+  $("scanAll").onchange = e=>{
+    box.querySelectorAll(".scanCk").forEach(c=>c.checked=e.target.checked);
+    $("scanN").textContent = box.querySelectorAll(".scanCk:checked").length;
+  };
+  box.querySelectorAll(".scanCk").forEach(c=>c.onchange=()=>{
+    $("scanN").textContent = box.querySelectorAll(".scanCk:checked").length; });
+  $("scanDl").onclick = async ()=>{
+    const picks = [...box.querySelectorAll(".scanCk:checked")].map(c=>items[+c.dataset.i]);
+    for(const it of picks){
+      try{
+        await post("/api/jobs", it.url
+          ? {url:it.url, direct:it.url, name:it.name, size:it.size||0,
+             referer:$("referer").value.trim(), browser:$("browser").value}
+          : {url:pageUrl, pick:it.name,
+             referer:$("referer").value.trim(), browser:$("browser").value});
+      }catch(e){ toast("Gagal: "+e.message); return; }
+    }
+    toast(picks.length+" job ditambahkan ✓"); showTab("unduhan");
+  };
+}
+
+/* ---------- daftar job (update di tempat) ---------- */
+const jobEls = new Map();
+const CHIP = {queued:["Menunggu","queued"], running:["Berjalan","running"],
+  converting:["Mengonversi ke mp4","converting"], done:["Selesai","done"],
+  error:["Gagal","error"]};
+function chip(st){ const c = CHIP[st]||CHIP.queued;
+  return '<span class="chip '+c[1]+'">'+c[0]+"</span>"; }
+function renderJob(j){
+  let el = jobEls.get(j.id);
+  if(!el){
+    el = document.createElement("div"); el.className="job";
+    el.innerHTML =
+      '<div class="title"></div><div class="origin"></div><div class="chipwrap"></div>'
+      +'<div class="bejana"><div class="air"></div><div class="gelombang"></div>'
+      +'<div class="label"></div><div class="centang">✓</div></div>'
+      +'<div class="meta"></div><div class="err" style="display:none"></div>'
+      +'<div class="logbox"></div>'
+      +'<div class="aksi"><a class="btn secondary dl" style="display:none;text-align:center;text-decoration:none">💾 Simpan file</a>'
+      +'<button class="btn ghost rincian">Rincian</button></div>';
+    el.querySelector(".rincian").onclick = ()=>
+      el.querySelector(".logbox").classList.toggle("open");
+    jobEls.set(j.id, el);
+    const list = $("jobs");
+    // urutan: terbaru dulu
+    let placed = false;
+    for(const sib of list.children){
+      const sj = jobEls.get(sib._jid);
+      if(sj && sj._created < j.created){ list.insertBefore(el, sib); placed=true; break; }
+    }
+    if(!placed) list.appendChild(el);
+    el._jid = j.id; el._created = j.created;
+  }
+  el.querySelector(".title").textContent = j.file || j.pick || j.name || j.url || j.stream || "job";
+  el.querySelector(".origin").textContent = j.url ? "Asal: "+j.url : "";
+  el.querySelector(".chipwrap").innerHTML = chip(j.status);
+  const prog = j.progress;
+  const bar = el.querySelector(".bejana");
+  el.querySelector(".air").style.width = (prog!=null? Math.round(prog*100):0)+"%";
+  const lbl = el.querySelector(".label");
+  if(j.status==="done"){ lbl.textContent = fmtB(j.done_bytes||j.total_bytes); bar.classList.add("selesai"); }
+  else if(prog!=null){ lbl.textContent = Math.round(prog*100)+"%"; bar.classList.remove("selesai"); }
+  else { lbl.innerHTML = '<span class="titik3"><span>•</span><span>•</span><span>•</span></span>'; bar.classList.remove("selesai"); }
+  el.querySelector(".meta").textContent =
+    fmtB(j.done_bytes)+" / "+fmtB(j.total_bytes)+(j.est?" (estimasi)":"")
+    + " • " + fmtS(j.speed_bps) + " • " + (j.elapsed||0).toFixed(0)+" dtk";
+  const errEl = el.querySelector(".err");
+  if(j.error){ errEl.style.display="block"; errEl.textContent = j.error; }
+  else errEl.style.display="none";
+  el.querySelector(".logbox").textContent = (j.log||[]).join("\n");
+  const dl = el.querySelector(".dl");
+  if(j.status==="done" && j.file){
+    dl.style.display="block"; dl.href="/files/"+encodeURIComponent(j.file);
+    dl.setAttribute("download", j.file);
+  } else dl.style.display="none";
+  return el;
+}
+async function pollJobs(){
+  try{
+    const r = await fetch("/api/jobs").then(x=>x.json());
+    const box = $("jobs");
+    if(!r.length && !box.children.length){
+      box.innerHTML = '<div class="empty"><div class="tetes">💧</div>Belum ada unduhan.<br>Tempel link di tab Tambah untuk mulai.</div>';
+    } else if(box.querySelector(".empty")) box.innerHTML="";
+    const active = r.filter(j=>j.status==="running"||j.status==="queued"||j.status==="converting").length;
+    $("runCount").textContent = active+" berjalan";
+    const badge = $("badge");
+    badge.style.display = active? "inline":"none"; badge.textContent = active;
+    const ids = new Set(r.map(j=>j.id));
+    for(const [id, el] of jobEls){ if(!ids.has(id)){ el.remove(); jobEls.delete(id); } }
+    r.forEach(renderJob);
+  }catch(e){ /* diam, coba lagi */ }
+}
+$("btnHapusSelesai").onclick = async ()=>{ await post("/api/jobs/clear",{errors:false}); pollJobs(); };
+$("btnHapusGagal").onclick = async ()=>{ await post("/api/jobs/clear",{errors:true}); pollJobs(); };
+setInterval(pollJobs, 1000); pollJobs();
+
+/* ---------- catatan ---------- */
+let notesRev = 0, notesTimer = null, typing = false, dirty = false;
+async function loadNotes(){
+  try{
+    const r = await fetch("/api/notes",{cache:"no-store"}).then(x=>x.json());
+    if(!typing && !dirty){ $("notes").value = r.text||""; }
+    notesRev = r.rev||0; $("notesStatus").textContent = "Tersimpan ✓";
+  }catch(e){ $("notesStatus").textContent = "Gagal memuat"; }
+}
+$("notes").addEventListener("input", ()=>{
+  typing = true; dirty = true;
+  $("notesStatus").textContent = "Menyimpan…";
+  clearTimeout(notesTimer);
+  notesTimer = setTimeout(async ()=>{
+    try{
+      const r = await post("/api/notes",{text:$("notes").value});
+      notesRev = r.rev; dirty = false; typing = false;
+      $("notesStatus").textContent = "Tersimpan ✓";
+    }catch(e){
+      $("notesStatus").textContent = "Gagal menyimpan, mencoba lagi…";
+      setTimeout(()=>{ if(dirty) $("notes").dispatchEvent(new Event("input")); }, 4000);
+    }
+  }, 700);
+});
+$("notes").addEventListener("blur", ()=>{ typing=false; });
+setInterval(async ()=>{
+  if(typing || dirty) return;
+  try{
+    const r = await fetch("/api/notes",{cache:"no-store"}).then(x=>x.json());
+    if(r.rev !== notesRev){ $("notes").value = r.text||""; notesRev = r.rev; }
+  }catch(e){}
+}, 5000);
+$("btnSalin").onclick = async ()=>{
+  try{ await navigator.clipboard.writeText($("notes").value); toast("Disalin ✓"); }
+  catch(e){ toast("Gagal menyalin"); }
+};
+loadNotes();
+
+/* ---------- bookmarklet ---------- */
+$("bmLink").href = "javascript:(()=>{window.open('"+location.origin+"/?url='+encodeURIComponent(location.href))})()";
+(function(){
+  const m = new URLSearchParams(location.search).get("url");
+  if(m){ $("url").value = m;
+    history.replaceState(null, "", location.pathname);
+    showTab("tambah"); toast("Link diterima dari bookmarklet ✓"); }
+})();
+</script>
+</body>
+</html>

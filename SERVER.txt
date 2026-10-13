@@ -1,0 +1,24 @@
+GRABBER — AKSES JARAK JAUH DARI HP (Tailscale / Funnel)
+=======================================================
+
+1. ISI PASSWORD DULU (wajib sebelum akses publik):
+   Buka file password.txt, tulis satu baris kata sandi, simpan.
+   Tanpa ini, siapa pun di internet bisa memakai Grabber-mu.
+
+2. Jalankan mode server:
+   Klik dua kali: run-server.bat
+   (mendengarkan di 0.0.0.0:8765)
+
+3. Akses dari HP yang satu jaringan Tailscale:
+   Buka di browser HP: http://100.x.x.x:8765
+   (ganti 100.x.x.x dengan IP Tailscale laptop — lihat di aplikasi Tailscale)
+   Browser akan meminta kata sandi dari password.txt.
+
+4. Akses dari internet publik (opsional, hati-hati):
+   Klik dua kali: funnel-on.bat  -> dapat URL publik https://....
+   Matikan dengan: funnel-off.bat
+
+CATATAN:
+- Jangan pernah menyalakan Funnel tanpa password.
+- Port: 8765 (tetap).
+- Hasil unduhan tersimpan di folder downloads/ di laptop.

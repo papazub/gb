@@ -1,0 +1,16 @@
+# Hasil unduhan & file kerja lokal
+downloads/
+_tmp_*/
+debug_*/
+
+# State lokal (jangan di-push)
+notes.json
+password.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
