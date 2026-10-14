@@ -37,6 +37,40 @@ def has_drm(playlist_text):
     return bool(DRM_PAT.search(playlist_text or ""))
 
 
+# ------------------------------------------------------------- konten privat (YouTube/Instagram)
+# yt-dlp bisa mengunduh video privat (YouTube privat, IG privat) ASALKAN
+# pemakai sudah punya akses dan memakai cookie browser-nya sendiri
+# (cookiesfrombrowser). Tool ini TIDAK membobol privasi: tanpa sesi login
+# yang sah, konten privat tetap tidak bisa diunduh.
+PRIVATE_ERR_PATTERNS = (
+    "private video", "video is private", "this video is private",
+    "login required", "please log in", "log in to", "sign in",
+    "requires login", "not logged in", "only available to",
+    "account is private", "private account", "post is unavailable",
+    "this post is unavailable", "video unavailable", "unavailable video",
+    "this video is unavailable", "sign in to confirm", "confirm your age",
+    "age-restricted", "age restricted", "login to continue",
+)
+
+PRIVATE_HINT = ("Konten ini privat / butuh login. Buka dulu kontennya di "
+                "browser (login akun yang sudah punya akses — video YouTube "
+                "privat milikmu / yang dibagikan ke kamu, atau akun Instagram "
+                "privat yang kamu follow), lalu pilih 'Cookie dari browser' "
+                "sesuai browsermu dan coba lagi.")
+
+
+def is_private_error(msg):
+    low = (msg or "").lower()
+    return any(p in low for p in PRIVATE_ERR_PATTERNS)
+
+
+def explain_error(msg):
+    """Tambahkan petunjuk cookie browser bila error menandakan konten privat/login."""
+    if is_private_error(msg):
+        return f"{msg} — {PRIVATE_HINT}"
+    return msg
+
+
 # ------------------------------------------------------------- yt-dlp
 def _ydl_opts(job, target, headers, browser, ffmpeg_loc):
     return {
@@ -292,6 +326,8 @@ def _worker(job):
                         return
                     except Exception as e:
                         log(job, f"yt-dlp gagal: {e}")
+                        if is_private_error(str(e)):
+                            log(job, PRIVATE_HINT)
                     # 2) siapa tahu URL-nya file
                     try:
                         path = download_direct(job, url, base_headers, "")
@@ -357,12 +393,14 @@ def _worker(job):
                 except Exception as e:
                     last_err = clean(str(e))
                     log(job, f"kandidat gagal: {last_err}")
+                    if is_private_error(str(e)):
+                        log(job, PRIVATE_HINT)
             raise RuntimeError(last_err or "semua kandidat gagal")
         except DuplicateFile as e:
             job["error"] = str(e)
             job["status"] = "error"
         except Exception as e:
-            job["error"] = clean(str(e))
+            job["error"] = explain_error(clean(str(e)))
             job["status"] = "error"
             log(job, f"gagal: {job['error']}")
         finally:

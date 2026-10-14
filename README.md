@@ -39,6 +39,11 @@ bisa diakses dari HP lewat Tailscale.
 12. **Bookmarklet** "Kirim ke Grabber" untuk PC.
 13. **Akses jarak jauh**: mode server + password (Basic Auth) + skrip
     Tailscale Funnel.
+14. **Video YouTube/Instagram privat** — selama kamu sudah punya aksesnya
+    (video privat milikmu / dibagikan ke kamu, atau akun IG privat yang kamu
+    follow): buka dulu di browser (login), lalu pilih "Cookie dari browser".
+    Grabber memakai sesi loginmu sendiri — tidak membobol privasi orang lain.
+    Bila gagal karena privat/login, pesan error kini memberi petunjuk ini.
 
 ## Cara menjalankan (Windows)
 
